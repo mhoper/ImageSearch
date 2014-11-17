@@ -126,7 +126,6 @@ public class TwoLevelDoubleTapZoomNetworkImageView extends LimitedLevelZoomNetwo
 
 			@Override
 			public boolean onSingleTapUp(MotionEvent e) {
-				// Do nothing
 				return EVENT_DONE;
 			}
 		});
@@ -135,7 +134,9 @@ public class TwoLevelDoubleTapZoomNetworkImageView extends LimitedLevelZoomNetwo
 			
 			@Override
 			public boolean onSingleTapConfirmed(MotionEvent event) {
-				// Do nothing
+				//single tap时调用ImageView的点击事件（由于ImageView的onClick事件与onTouchEvent冲突，直接调用不起作用），故采用performClick
+				TwoLevelDoubleTapZoomNetworkImageView.this.performClick();
+				
 				return EVENT_DONE;
 			}
 			

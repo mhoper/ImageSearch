@@ -12,11 +12,11 @@ import com.etsy.android.grid.util.DynamicHeightImageView;
 import com.legendleo.imagesearch.R;
 import com.legendleo.imagesearch.net.URLUtil;
 
-public class ImageAdapter extends BaseAdapter {
+public class ImageMainAdapter extends BaseAdapter {
 	
 	private Context mContext;
 	
-	public ImageAdapter(Context c){
+	public ImageMainAdapter(Context c){
 		mContext = c;
 	}
 
@@ -41,7 +41,7 @@ public class ImageAdapter extends BaseAdapter {
 		ViewHolder holder;
 		if(convertView == null){
 			holder = new ViewHolder();
-			convertView = LayoutInflater.from(mContext).inflate(R.layout.image_adapter, parent, false);
+			convertView = LayoutInflater.from(mContext).inflate(R.layout.image_main_adapter, parent, false);
 			holder.imageView = (DynamicHeightImageView) convertView.findViewById(R.id.cateImageView);
 			holder.textView = (TextView) convertView.findViewById(R.id.cateTextView);
 			convertView.setTag(holder);

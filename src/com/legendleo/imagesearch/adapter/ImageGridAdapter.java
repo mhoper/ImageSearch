@@ -22,27 +22,18 @@ import com.legendleo.imagesearch.volley.BitmapCache;
 import com.legendleo.imagesearch.volley.DynamicHeightNetworkImageView;
 import com.legendleo.imagesearch.volley.MySingleton;
 
-public class SearchResultAdapter extends BaseAdapter {
+public class ImageGridAdapter extends BaseAdapter {
 
 	private Context mContext;
 	private List<String[]> list;
 	private ImageLoader imageLoader;
 	private final Random mRandom;
 	private int columnWidth;
-	/**
-	 * 区分分类和搜索
-	 */
-	private int flag;
-	
-	public void setFlag(int flg) {
-		this.flag = flg;
-	}
 	
 	private static final SparseArray<Double> sPositionHeightRatios = new SparseArray<Double>();
 	
-	public SearchResultAdapter(Context context, int flg, List<String[]> mData){
+	public ImageGridAdapter(Context context, List<String[]> mData){
 		mContext = context;
-		flag = flg;
 		list = mData; //直接引用mList的值
 		imageLoader = MySingleton.getInstance(context).getImageLoader();
 		mRandom = new Random();
@@ -68,7 +59,7 @@ public class SearchResultAdapter extends BaseAdapter {
 		ViewHolder holder;
 		if(convertView == null){
 			holder = new ViewHolder();
-			convertView = LayoutInflater.from(mContext).inflate(R.layout.search_result_adapter, parent, false);
+			convertView = LayoutInflater.from(mContext).inflate(R.layout.image_grid_adapter, parent, false);
 			holder.mImageView = (DynamicHeightNetworkImageView) convertView.findViewById(R.id.resultNetworkImageView);
 			convertView.setTag(holder);
 		}else{
@@ -82,12 +73,7 @@ public class SearchResultAdapter extends BaseAdapter {
 		holder.mImageView.setDefaultImageResId(R.drawable.empty_photo);
 		holder.mImageView.setErrorImageResId(R.drawable.empty_photo);
 		
-		String url = "";
-		if(flag == 0){
-			url = list.get(position)[0];
-		}else if(flag == 1){
-			url = list.get(position)[1];
-		}
+		String url = list.get(position)[0];
 		
 		holder.mImageView.setImageUrl(url, imageLoader);
 

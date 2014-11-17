@@ -9,12 +9,14 @@
         android:layout_height="match_parent" />
 
     <LinearLayout
+        android:id="@+id/imageShowButtons"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:background="@color/transparentblack" >
+        android:background="@color/transparentblack"
+        android:visibility="gone" >
         
         <ImageView
             android:id="@+id/back"

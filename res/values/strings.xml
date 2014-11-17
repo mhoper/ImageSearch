@@ -12,5 +12,6 @@
     <string name="content_wallpaper">content_wallpaper</string>
     <string name="action_search">search</string>
     <string name="network_state_hint">网络连接不可用，请检查网络后再试</string>
+    <string name="action_about">About</string>
 
 </resources>

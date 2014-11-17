@@ -1,26 +1,23 @@
-package com.legendleo.imagesearch;
+package com.legendleo.imagesearch.fragment;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
-import org.json.JSONObject;
-
-import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.support.annotation.Nullable;
+import android.support.v4.app.Fragment;
 import android.support.v4.app.NavUtils;
-import android.util.DisplayMetrics;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
-import android.view.View.OnTouchListener;
+import android.view.ViewGroup;
 import android.view.ViewTreeObserver.OnGlobalLayoutListener;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AbsListView;
@@ -32,22 +29,28 @@ import android.widget.SearchView;
 import android.widget.SearchView.OnQueryTextListener;
 import android.widget.TextView;
 
+import com.android.volley.RequestQueue;
 import com.etsy.android.grid.StaggeredGridView;
-import com.legendleo.imagesearch.adapter.SearchResultAdapter;
+import com.legendleo.imagesearch.AboutDialog;
+import com.legendleo.imagesearch.ImageShowActivity;
+import com.legendleo.imagesearch.R;
+import com.legendleo.imagesearch.adapter.ImageGridAdapter;
 import com.legendleo.imagesearch.net.NetUtil;
 import com.legendleo.imagesearch.net.URLUtil;
 import com.legendleo.imagesearch.volley.GetJsonByVolley;
+import com.legendleo.imagesearch.volley.MySingleton;
 
-public class SearchResultActivity extends Activity implements OnScrollListener {
+public class ImageGridFragment extends Fragment implements OnScrollListener {
 
 	private StaggeredGridView resultGridView;
-	private SearchResultAdapter mAdapter;
+	private ImageGridAdapter mAdapter;
 	
 	private GetJsonByVolley mGetJsonByVolley;
 	/**
 	 * 存放加载的Json数据
 	 */
 	private List<String[]> mList;
+
 	/**
 	 * 区分分类和搜索
 	 */
@@ -70,56 +73,56 @@ public class SearchResultActivity extends Activity implements OnScrollListener {
 	private TextView loadMoreText;
 	private TextView networkStateText;
 	
+	private Handler handler;
+	
+	public ImageGridFragment(){}
+	
 	@Override
-	protected void onCreate(Bundle savedInstanceState) {
+	public void onCreate(Bundle savedInstanceState) {
 		// TODO Auto-generated method stub
 		super.onCreate(savedInstanceState);
-		setContentView(R.layout.activity_search_result);
-
-		resultGridViewPBar = (ProgressBar) findViewById(R.id.resultGridViewPBar);
-		networkStateText = (TextView) findViewById(R.id.networkState);
+		setHasOptionsMenu(true); //设置为true,onCreateOptionsMenu才起作用
+		
+		Bundle args = getArguments();
+		flag = args.getInt("flag", 0);
+		category = args.getString("category");
+		keyword = args.getString("keyword");
+		
+	}
+	
+	@Override
+	public View onCreateView(LayoutInflater inflater,
+			@Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+		System.out.println("ImageGridFragment: onCreateView");
+		final View v = inflater.inflate(R.layout.activity_image_grid, container, false);
+		resultGridView = (StaggeredGridView) v.findViewById(R.id.resultGridView);
+		
+		resultGridViewPBar = (ProgressBar) v.findViewById(R.id.resultGridViewPBar);
+		networkStateText = (TextView) v.findViewById(R.id.networkState);
 		resultGridViewPBar.setVisibility(View.VISIBLE);
 		//网络连接检查
-		if(!NetUtil.CheckNet(this)){
+		if(!NetUtil.CheckNet(getActivity())){
 			networkStateText.setVisibility(View.VISIBLE);
 			resultGridViewPBar.setVisibility(View.GONE);
 		}
 		
-		//设置返回键
-		getActionBar().setDisplayHomeAsUpEnabled(true);
-		
-		Intent intent = getIntent();
-		flag = intent.getIntExtra("flag", 0);
-		category = intent.getStringExtra("category");
-		keyword = intent.getStringExtra("keyword");
-		
-		//设置标题
-		if(flag == 0){
-			setTitle(category);
-		}else if(flag == 1){
-			setTitle(keyword);
-		}
-		
-		resultGridView = (StaggeredGridView) findViewById(R.id.resultGridView);
-
-		loadMoreView = getLayoutInflater().inflate(R.layout.footer, resultGridView, false);
+		loadMoreView = getActivity().getLayoutInflater().inflate(R.layout.footer, resultGridView, false);
 		loadMoreProgressBar = (ProgressBar) loadMoreView.findViewById(R.id.loadMoreProgressBar);
 		loadMoreText = (TextView) loadMoreView.findViewById(R.id.loadMoreText);
 		resultGridView.addFooterView(loadMoreView);
 		
 		mList = new ArrayList<String[]>();
-		mAdapter = new SearchResultAdapter(this, flag, mList);
+		mAdapter = new ImageGridAdapter(getActivity(), mList);
 		resultGridView.setAdapter(mAdapter);
 		resultGridView.setOnScrollListener(this);
 
-		
 		resultGridView.setOnItemClickListener(new OnItemClickListener() {
 
 			@Override
 			public void onItemClick(AdapterView<?> parent, View view,
 					int position, long id) {
 				
-				Intent intent = new Intent(SearchResultActivity.this, ImageShowActivity.class);
+				Intent intent = new Intent(getActivity(), ImageShowActivity.class);
 				intent.putExtra("category", category);
 				intent.putExtra("keyword", keyword);
 				intent.putExtra("page", page);
@@ -141,43 +144,44 @@ public class SearchResultActivity extends Activity implements OnScrollListener {
 			}
 		});
 		
-		mGetJsonByVolley = new GetJsonByVolley(this, handler);
-		setAdapterData(keyword);
-		
-	}
-
-	private Handler handler = new Handler(){
-		@Override
-		public void handleMessage(Message msg) {
-			if(msg.what == 0){
-				if(page == 0){
-					mList.clear(); //重新搜索时清空
+		//new handler
+		handler = new Handler(){
+			@Override
+			public void handleMessage(Message msg) {
+				if(msg.what == 0){
+					if(page == 0){
+						mList.clear(); //重新搜索时清空
+					}
+					mList.addAll(mGetJsonByVolley.getmList());
+					System.out.println("handleMessage mList.size:" + mList.size());
+					
+					//重新搜索后，GridView滚动回顶部位置
+					if(resultGridViewPBar.getVisibility() == View.VISIBLE){
+						resultGridView.setSelection(0); //其它smoothScrollTo...都不起作用...why
+					}
+					//隐藏进度条
+					resultGridViewPBar.setVisibility(View.GONE);
+					loadMoreProgressBar.setVisibility(View.GONE);
+					loadMoreText.setVisibility(View.GONE);
+					
+					mAdapter.notifyDataSetChanged();
 				}
-				mList.addAll(mGetJsonByVolley.getmList());
-				System.out.println("handleMessage mList.size:" + mList.size());
-				
-				//重新搜索后，GridView滚动回顶部位置
-				if(resultGridViewPBar.getVisibility() == View.VISIBLE){
-					resultGridView.setSelection(0); //其它smoothScrollTo...都不起作用...why
-				}
-				//隐藏进度条
-				resultGridViewPBar.setVisibility(View.GONE);
-				loadMoreProgressBar.setVisibility(View.GONE);
-				loadMoreText.setVisibility(View.GONE);
-				
-				mAdapter.notifyDataSetChanged();
-			}
+			};
 		};
-	};
+
+		mGetJsonByVolley = new GetJsonByVolley(getActivity(), handler);
+		setAdapterData();
+		
+		return v;
+	}
 	
-	private void setAdapterData(String keyword){
+	private void setAdapterData(){
 		if(flag == 0){
-			mGetJsonByVolley.getJsonByVolley(category, page, flag);
+			mGetJsonByVolley.getJsonByVolley(category, page, flag, this);
 		}else if(flag ==1){
-			mGetJsonByVolley.getJsonByVolley(keyword, page, flag);
+			mGetJsonByVolley.getJsonByVolley(keyword, page, flag, this);
 		}
 	}
-	
 	
 	@Override
 	public void onScrollStateChanged(AbsListView view, int scrollState) {
@@ -210,14 +214,13 @@ public class SearchResultActivity extends Activity implements OnScrollListener {
 	private void onLoadMoreItems(){
 		page++;
 		totalImagesCount += URLUtil.RN;
-		setAdapterData(keyword);
+		setAdapterData();
 		hasRequestedMore = false;
 		System.out.println("SearchResultActivity onLoadMoreItems ------------------>>>>>>>>>>>");
 	}
 
 	@Override
-	public boolean onCreateOptionsMenu(Menu menu) {
-		MenuInflater inflater = getMenuInflater();
+	public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
 		inflater.inflate(R.menu.main, menu);
 		MenuItem searchItem = menu.findItem(R.id.headerSearchView);
 		SearchView searchView = (SearchView) searchItem.getActionView();
@@ -232,12 +235,11 @@ public class SearchResultActivity extends Activity implements OnScrollListener {
 				page = 0; //搜索时值清0
 				totalImagesCount = URLUtil.RN;
 				keyword = query; //把query赋值给keyword，加载更多时会用到
-				mAdapter.setFlag(flag); //更改flag值为搜索
-				setAdapterData(keyword);
+				setAdapterData();
 				hideSoftInput();
 				
 				//检查网络连接
-				if(NetUtil.CheckNet(SearchResultActivity.this)){
+				if(NetUtil.CheckNet(getActivity())){
 					networkStateText.setVisibility(View.GONE);
 					//设置进度条可见
 					resultGridViewPBar.setVisibility(View.VISIBLE);
@@ -255,8 +257,7 @@ public class SearchResultActivity extends Activity implements OnScrollListener {
 				return false;
 			}
 		});
-		
-		return super.onCreateOptionsMenu(menu);
+
 	}
 	
 	@Override
@@ -264,33 +265,47 @@ public class SearchResultActivity extends Activity implements OnScrollListener {
 		switch (item.getItemId()) {
 		case android.R.id.home:
 			//返回上一级
-			NavUtils.navigateUpFromSameTask(this);
+			NavUtils.navigateUpFromSameTask(getActivity());
 			break;
-
+			
+		case R.id.about:
+			AboutDialog dialog = new AboutDialog(getActivity(), R.style.DialogLayout);
+			dialog.show();
+			break;
+			
 		default:
 			break;
 		}
 		
 		return super.onOptionsItemSelected(item);
 	}
-	
+
 	//取消虚拟键盘：点击搜索按钮时调用有效
 	private void hideSoftInput(){
 		
-		InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+		InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
 		if(imm != null){
-//			imm.hideSoftInputFromInputMethod(getWindow().getDecorView().getWindowToken(), 0); //不起作用
-			imm.hideSoftInputFromWindow(getWindow().getDecorView().getWindowToken(), 0); //有效，与下文语句作用一样
-//			imm.hideSoftInputFromWindow(searchView.getWindowToken(), 0);
+			imm.hideSoftInputFromWindow(getActivity().getWindow().getDecorView().getWindowToken(), 0); //有效
 		}
 	}
-
+	
 	@Override
-	protected void onDestroy() {
+	public void onDestroyView() {
+		super.onDestroyView();
+		System.out.println("ImageGridFragment: onDestroyView");
+	}
+	
+	@Override
+	public void onDestroy() {
+		super.onDestroy();
+		
+		//取消所有json请求
+		RequestQueue rq = MySingleton.getInstance(getActivity()).getRequestQueue();
+		rq.cancelAll(this);
+		
 		//移除所有消息
 		handler.removeCallbacksAndMessages(null);
-//		mList = null;
-//		mAllList = null;
+		mList = null;
 //		mAdapter = null;
 //		resultGridView = null;
 //		mGetJsonByVolley = null;
@@ -298,8 +313,5 @@ public class SearchResultActivity extends Activity implements OnScrollListener {
 //		resultGridViewPBar = null;
 //		loadMoreText = null;
 //		networkStateText = null;
-		
-		super.onDestroy();
 	}
-
 }

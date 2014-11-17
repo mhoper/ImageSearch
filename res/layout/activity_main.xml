@@ -2,7 +2,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="4dp"
+    android:padding="2dp"
     android:background="@color/white"
     android:orientation="vertical"
     tools:context="com.legendleo.imagesearch.MainActivity" >
@@ -11,11 +11,13 @@
         android:id="@+id/categoryGridView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        style="@style/ImageGridLayout"
         android:gravity="center"
-        android:horizontalSpacing="4dp"
+        android:horizontalSpacing="2dp"
         android:numColumns="3"
         android:stretchMode="columnWidth"
-        android:verticalSpacing="4dp" >
+        android:verticalSpacing="2dp"
+        android:scrollbars="none" >
     </GridView>
 
 </LinearLayout>

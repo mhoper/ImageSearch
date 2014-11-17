@@ -37,4 +37,8 @@ public class MySingleton {
 	public ImageLoader getImageLoader(){
 		return mImageLoader;
 	}
+	
+	public void setTag(String tag){
+		
+	}
 }

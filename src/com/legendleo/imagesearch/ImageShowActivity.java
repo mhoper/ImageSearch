@@ -4,37 +4,40 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import android.app.Activity;
-import android.app.WallpaperManager;
-import android.content.ActivityNotFoundException;
-import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
-import android.graphics.drawable.Drawable;
-import android.net.Uri;
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
-import android.support.v4.view.ViewPager;
-import android.support.v4.view.ViewPager.OnPageChangeListener;
-import android.view.MotionEvent;
-import android.view.View;
-import android.view.View.OnTouchListener;
-import android.view.Window;
-import android.widget.Toast;
-
+import com.android.volley.RequestQueue;
+import com.android.volley.toolbox.ImageLoader;
+import com.legendleo.imagesearch.adapter.ImageShowAdapter;
 import com.legendleo.imagesearch.adapter.ImageShowAdapter;
 import com.legendleo.imagesearch.net.URLUtil;
 import com.legendleo.imagesearch.util.FileUtil;
 import com.legendleo.imagesearch.volley.GetJsonByVolley;
+import com.legendleo.imagesearch.volley.MySingleton;
 import com.legendleo.imagesearch.volley.ZoomableNetworkImageView.ZoomableNetworkImageView;
 
-public class ImageShowActivity extends Activity {
+import android.annotation.TargetApi;
+import android.app.WallpaperManager;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.os.Build.VERSION_CODES;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.view.ViewPager;
+import android.support.v4.view.ViewPager.OnPageChangeListener;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.Toast;
+
+public class ImageShowActivity extends FragmentActivity implements OnClickListener {
+	
 	private ViewPager imageViewPager;
 	private ImageShowAdapter mAdapter;
+	
+	private ImageLoader imageLoader;
 	/**
 	 * 存放加载的Json数据
 	 */
@@ -55,12 +58,18 @@ public class ImageShowActivity extends Activity {
 	//首次进入时当前图片的位置
 	private int currentPosition;
 	
+	private Handler handler;
+	
 	@SuppressWarnings("unchecked")
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		// TODO Auto-generated method stub
 		super.onCreate(savedInstanceState);
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
+		getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+		getWindow().addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN);
+		getWindow().addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
+		
 		setContentView(R.layout.activity_image_show);
 		
 		Intent intent = getIntent();
@@ -71,17 +80,31 @@ public class ImageShowActivity extends Activity {
 		totalImagesCount = intent.getIntExtra("totalImagesCount", URLUtil.RN);
 		currentPosition = intent.getIntExtra("currentPosition", 0);
 		
+		imageLoader = MySingleton.getInstance(this).getImageLoader();
+		
 		mList = new ArrayList<String[]>();
 		mList.addAll((List<String[]>) intent.getSerializableExtra("jsonString"));
 		
 		System.out.println("ImageShowActivity position:" + currentPosition);
-		mAdapter = new ImageShowAdapter(this, flag, mList);
+		mAdapter = new ImageShowAdapter(getSupportFragmentManager(), mList);
 		imageViewPager = (ViewPager) findViewById(R.id.imageViewPager);
 		imageViewPager.setAdapter(mAdapter);
 		
 		//mAdapter.notifyDataSetChanged();
 		//加载数据后,再设置当前页
 		imageViewPager.setCurrentItem(currentPosition);
+		
+		handler = new Handler(){
+			@Override
+			public void handleMessage(Message msg) {
+				if(msg.what == 0){
+					System.out.println("收到来自handler的更新消息");
+					mList.addAll(mGetJsonByVolley.getmList());
+					
+					mAdapter.notifyDataSetChanged();
+				}
+			};
+		};
 		
 		imageViewPager.setOnPageChangeListener(new OnPageChangeListener() {
 			
@@ -93,15 +116,7 @@ public class ImageShowActivity extends Activity {
 				if(position == mList.size() - 2 && position == totalImagesCount - 2){
 					System.out.println("到达倒数第2页，将加载更多");
 					//最后一页向左滑后，则获取下一次Json数据
-					mGetJsonByVolley = new GetJsonByVolley(ImageShowActivity.this, handler);
-					page++; //下一页rn
-					totalImagesCount += URLUtil.RN; //防止由于网络延迟mAllList的size还未增加时而多次调用GetJsonByVolley，故此处先加上
-					
-					if(flag == 0){
-						mGetJsonByVolley.getJsonByVolley(category, page, flag);
-					}else if(flag == 1){
-						mGetJsonByVolley.getJsonByVolley(keyword, page, flag);
-					}
+					loadMoreItems();
 				}
 			}
 			
@@ -127,15 +142,7 @@ public class ImageShowActivity extends Activity {
 						//首次进入时直接到最后一页
 						if(currentPosition == mList.size() - 1 && imageViewPager.getCurrentItem() == totalImagesCount - 1){
 							System.out.println("到达最后一页，将加载更多");
-							mGetJsonByVolley = new GetJsonByVolley(ImageShowActivity.this, handler);
-							page++; //下一页rn
-							totalImagesCount += URLUtil.RN; //防止由于网络延迟mAllList的size还未增加时而多次调用GetJsonByVolley，故此处先加上
-
-							if(flag == 0){
-								mGetJsonByVolley.getJsonByVolley(category, page, flag);
-							}else if(flag == 1){
-								mGetJsonByVolley.getJsonByVolley(keyword, page, flag);
-							}
+							loadMoreItems();
 						}
 						
 						Toast.makeText(ImageShowActivity.this, "is loading...", Toast.LENGTH_SHORT).show(); //给予加载中提示
@@ -156,53 +163,41 @@ public class ImageShowActivity extends Activity {
 			}
 		});
 		
-//		final ZoomableNetworkImageView gestureImageView1 = (ZoomableNetworkImageView) imageViewPager.findViewWithTag(imageViewPager.getCurrentItem());
-//		gestureImageView1.setOnTouchListener(new OnTouchListener() {
-//			
-//			@Override
-//			public boolean onTouch(View v, MotionEvent event) {
-//				System.out.println("gestureImageView onTouch:" + gestureImageView1.getZoomLevel());
-//				if(gestureImageView1.getZoomLevel() > 1.0){
-//					System.out.println("图片已经被放大");
-//					//如果图片被放大，则禁止父组件消费
-//					gestureImageView1.getParent().requestDisallowInterceptTouchEvent(true);
-//				}
-//				return false;
-//			}
-//		});
 	}
 	
-	private Handler handler = new Handler(){
-		@Override
-		public void handleMessage(Message msg) {
-			if(msg.what == 0){
-				System.out.println("收到来自handler的更新消息");
-				mList.addAll(mGetJsonByVolley.getmList());
-				
-				mAdapter.notifyDataSetChanged();
-			}
-		};
-	};
+	private void loadMoreItems(){
+		mGetJsonByVolley = new GetJsonByVolley(ImageShowActivity.this, handler);
+		page++; //下一页rn
+		totalImagesCount += URLUtil.RN; //防止由于网络延迟mAllList的size还未增加时而多次调用GetJsonByVolley，故此处先加上
+
+		if(flag == 0){
+			mGetJsonByVolley.getJsonByVolley(category, page, flag, this);
+		}else if(flag == 1){
+			mGetJsonByVolley.getJsonByVolley(keyword, page, flag, this);
+		}
+	}
+	
+
+    /**
+     * Called by the ViewPager child fragments to load images via the one ImageLoader
+     */
+	public ImageLoader getImageLoader(){
+		return imageLoader;
+	}
 	
 	//返回按钮
 	public void onBack(View view) {
 		finish();
-		//移除所有消息
-		handler.removeCallbacksAndMessages(null);
 	}
 	
 	//下载按钮
 	public void onDownloadIamge(View view){
+		String downloadUrl = mList.get(imageViewPager.getCurrentItem())[1];
+		
 		//通过tag获取当前页图片
-		ZoomableNetworkImageView gestureImageView = (ZoomableNetworkImageView) imageViewPager.findViewWithTag(imageViewPager.getCurrentItem());
+		ZoomableNetworkImageView gestureImageView = (ZoomableNetworkImageView) imageViewPager.findViewWithTag(downloadUrl);
 		gestureImageView.setDrawingCacheEnabled(true);
 		
-		String downloadUrl = "";
-		if(flag == 0){
-			downloadUrl = mList.get(imageViewPager.getCurrentItem())[1];
-		}else if(flag == 1){
-			downloadUrl = mList.get(imageViewPager.getCurrentItem())[1];
-		}
 
 		if(FileUtil.writeSDcard(downloadUrl, gestureImageView.getDrawingCache())){
 			Toast.makeText(this, "download successful", Toast.LENGTH_SHORT).show();
@@ -215,9 +210,10 @@ public class ImageShowActivity extends Activity {
 	
 	public void onSetWallpaper(View view){
 		WallpaperManager wallpaperManager = WallpaperManager.getInstance(this);
+		String downloadUrl = mList.get(imageViewPager.getCurrentItem())[1];
 		
 		//通过tag获取当前页图片
-		ZoomableNetworkImageView gestureImageView = (ZoomableNetworkImageView) imageViewPager.findViewWithTag(imageViewPager.getCurrentItem());
+		ZoomableNetworkImageView gestureImageView = (ZoomableNetworkImageView) imageViewPager.findViewWithTag(downloadUrl);
 		gestureImageView.setDrawingCacheEnabled(true);
 		try {
 			wallpaperManager.setBitmap(gestureImageView.getDrawingCache());
@@ -229,14 +225,8 @@ public class ImageShowActivity extends Activity {
 	}
 	
 	public void onShare(View view){
-		String downloadUrl = "";
+		String downloadUrl = mList.get(imageViewPager.getCurrentItem())[1];
 
-		if(flag == 0){
-			downloadUrl = mList.get(imageViewPager.getCurrentItem())[1];
-		}else if(flag == 1){
-			downloadUrl = mList.get(imageViewPager.getCurrentItem())[1];
-		}
-			
 		Intent intent = new Intent(Intent.ACTION_SEND);
 		intent.setType("text/plain");
 		intent.putExtra(Intent.EXTRA_SUBJECT, "share");
@@ -259,15 +249,53 @@ public class ImageShowActivity extends Activity {
 	
 	@Override
 	protected void onDestroy() {
+		super.onDestroy();
+		
+		//取消所有json请求
+		RequestQueue rq = MySingleton.getInstance(this).getRequestQueue();
+		rq.cancelAll(this);
+		
 		//移除所有消息
 		handler.removeCallbacksAndMessages(null);
-//		mList = null;
-//		mAllList = null;
+		
+		mList = null;
 //		mAdapter = null;
 //		imageViewPager = null;
 //		mGetJsonByVolley = null;
-		
-		super.onDestroy();
 		System.out.println("ImageShowActivity onDestroy");
+	}
+
+	@TargetApi(VERSION_CODES.HONEYCOMB)
+	@Override
+	public void onClick(View v) {
+		System.out.println("*************************ImageShowActivity onClick");
+		//single tap时显示或隐藏功能按钮区
+		View imageShowButtons = findViewById(R.id.imageShowButtons);
+		int viewState = imageShowButtons.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE;
+		imageShowButtons.setVisibility(viewState);
+		
+		//single tap时全屏或非全屏显示
+		if(viewState == View.VISIBLE){
+			showStatusBar();
+		}else if(viewState == View.GONE){
+			hideStatusBar();
+		}
+//		WindowManager.LayoutParams attrs = getWindow().getAttributes();
+//		int flagState = attrs.flags == WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN ? WindowManager.LayoutParams.FLAG_FULLSCREEN : WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN;
+//		getWindow().setFlags(flagState, flagState);
+	}
+	
+	//隐藏状态栏
+	private void hideStatusBar() {
+		WindowManager.LayoutParams attrs = getWindow().getAttributes();
+		attrs.flags |= WindowManager.LayoutParams.FLAG_FULLSCREEN;
+		getWindow().setAttributes(attrs);
+	}
+
+	//显示状态栏
+	private void showStatusBar() {
+		WindowManager.LayoutParams attrs = getWindow().getAttributes();
+		attrs.flags &= ~WindowManager.LayoutParams.FLAG_FULLSCREEN;
+		getWindow().setAttributes(attrs);
 	}
 }

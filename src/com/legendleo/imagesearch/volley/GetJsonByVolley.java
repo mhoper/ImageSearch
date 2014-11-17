@@ -26,13 +26,15 @@ public class GetJsonByVolley {
 	private List<String[]> mList;
 	private Context mContext;
 	private Handler mHandler;
+	private RequestQueue requestQueue;
 	public GetJsonByVolley(Context context, Handler handler){
 		mContext = context;
 		mHandler = handler;
 		mList = new ArrayList<String[]>();
+		requestQueue = MySingleton.getInstance(mContext).getRequestQueue();
 	}
 	
-	public void getJsonByVolley(String keyword, int page, final int flag){
+	public void getJsonByVolley(String keyword, int page, final int flag, final Object tag){
 		//网络连接正常
 		if(NetUtil.CheckNet(mContext)){
 			String searchUrl = "";
@@ -43,7 +45,6 @@ public class GetJsonByVolley {
 			}
 			
 			System.out.println("GetJsonByVolley getJsonByVolley:" + searchUrl);
-			RequestQueue requestQueue = Volley.newRequestQueue(mContext);
 	
 			JsonUTF8Request jsonUTF8Request = new JsonUTF8Request(
 					Request.Method.GET, searchUrl, null, 
@@ -92,7 +93,7 @@ public class GetJsonByVolley {
 	
 						}
 					});
-	
+			jsonUTF8Request.setTag(tag); //设置tag
 			requestQueue.add(jsonUTF8Request);
 		}
 	}

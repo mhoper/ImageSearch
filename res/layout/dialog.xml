@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical" >
+
+    <TextView
+        android:id="@+id/textView1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingLeft="20dp"
+        android:paddingRight="30dp"
+        android:textColor="@color/white"
+        android:textStyle="italic"
+        android:text="\n\n
+        关于：\n
+        提供图片浏览\n
+        搜索\n
+        下载\n
+        设置壁纸\n
+        分享等功能\n\n
+        Powered by S.Q.\n\n" />
+
+</LinearLayout>

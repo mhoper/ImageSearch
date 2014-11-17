@@ -20,8 +20,9 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:gravity="center"
-        app:item_margin="4dp"
-        app:column_count="3" >
+        app:item_margin="2dp"
+        app:column_count_portrait="3"
+        app:column_count_landscape="5" >
     </com.etsy.android.grid.StaggeredGridView>
         
     <ProgressBar
