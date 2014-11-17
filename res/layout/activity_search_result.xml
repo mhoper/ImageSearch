@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/white"
+    android:orientation="vertical" xmlns:app="http://schemas.android.com/apk/res/com.legendleo.imagesearch">
+
+    <TextView
+        android:id="@+id/networkState"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="5dp"
+        android:textColor="#ffffff"
+        android:background="#ff0000"
+        android:visibility="gone"
+        android:text="@string/network_state_hint" />
+    
+    <com.etsy.android.grid.StaggeredGridView
+        android:id="@+id/resultGridView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        app:item_margin="2dp"
+        app:column_count="3" >
+    </com.etsy.android.grid.StaggeredGridView>
+        
+    <ProgressBar
+        android:id="@+id/resultGridViewPBar"
+        style="?android:progressBarStyleInverse"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:indeterminate="true"
+        android:visibility="visible" />
+
+</FrameLayout>
