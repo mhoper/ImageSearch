@@ -28,22 +28,18 @@ import com.legendleo.imagesearch.volley.ZoomableNetworkImageView.ZoomableNetwork
 
 public class ImageShowAdapter extends PagerAdapter {
 	private Context mContext;
-	private List<JSONObject> mList;
+	private List<String[]> mList;
 	private ImageLoader imageLoader;
 	
 	private ZoomableNetworkImageView gestureImageView;
 	private String downloadUrl;
 	private int flag;
 	
-	public ImageShowAdapter(Context context, int flg){
+	public ImageShowAdapter(Context context, int flg, List<String[]> mData){
 		mContext = context;
+		mList = mData; //直接引用mList的值
 		flag = flg;
-		mList = new ArrayList<JSONObject>();
 		imageLoader = MySingleton.getInstance(context).getImageLoader();
-	}
-	
-	public void addAll(List<JSONObject> mData){
-		mList.addAll(mData);
 	}
 	
 	@Override
@@ -67,19 +63,13 @@ public class ImageShowAdapter extends PagerAdapter {
 		View imageLayout = inflater.inflate(R.layout.image_show_adapter, container, false);
 		assert imageLayout != null;
 
-		try {
-			if(flag == 0){
-				downloadUrl = mList.get(position).getString("download_url");
-			}else if(flag ==1 ){
-				downloadUrl = mList.get(position).getString("objURL");
-			}
-			
-			System.out.println("downloadUrl:" + downloadUrl);
-			
-		} catch (JSONException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		if(flag == 0){
+			downloadUrl = mList.get(position)[1];
+		}else if(flag ==1 ){
+			downloadUrl = mList.get(position)[1];
 		}
+		
+		System.out.println("downloadUrl:" + downloadUrl);
 		
 		gestureImageView = (ZoomableNetworkImageView) imageLayout.findViewById(R.id.gestureImageView);
 		final ProgressBar imageShowPBar = (ProgressBar) imageLayout.findViewById(R.id.imageShowPBar);

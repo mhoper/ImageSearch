@@ -1,7 +1,9 @@
 package com.legendleo.imagesearch.volley;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -21,16 +23,16 @@ import com.legendleo.imagesearch.net.NetUtil;
 import com.legendleo.imagesearch.net.URLUtil;
 
 public class GetJsonByVolley {
-	private List<JSONObject> mList;
+	private List<String[]> mList;
 	private Context mContext;
 	private Handler mHandler;
 	public GetJsonByVolley(Context context, Handler handler){
 		mContext = context;
 		mHandler = handler;
-		mList = new ArrayList<JSONObject>();
+		mList = new ArrayList<String[]>();
 	}
 	
-	public void getJsonByVolley(String keyword, int page, int flag){
+	public void getJsonByVolley(String keyword, int page, final int flag){
 		//网络连接正常
 		if(NetUtil.CheckNet(mContext)){
 			String searchUrl = "";
@@ -62,8 +64,15 @@ public class GetJsonByVolley {
 									String imageJson = data.getString(i);
 									JSONTokener jsonParser = new JSONTokener(imageJson);
 									JSONObject imageObject = (JSONObject) jsonParser.nextValue();
-									
-									mList.add(imageObject);
+									String[] strUrls = new String[2];
+									if(flag == 0){
+										strUrls[0] = imageObject.getString("thumbnail_url");
+										strUrls[1] = imageObject.getString("download_url");
+									}else if(flag == 1){
+										strUrls[0] = imageObject.getString("thumbURL");
+										strUrls[1] = imageObject.getString("objURL");
+									}
+									mList.add(strUrls);
 								}
 								
 								//数据获取完成后,发送消息通知
@@ -88,7 +97,7 @@ public class GetJsonByVolley {
 		}
 	}
 	
-	public List<JSONObject> getmList() {
+	public List<String[]> getmList() {
 		return mList;
 	}
 }

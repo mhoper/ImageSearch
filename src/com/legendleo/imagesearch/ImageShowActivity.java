@@ -36,13 +36,9 @@ public class ImageShowActivity extends Activity {
 	private ViewPager imageViewPager;
 	private ImageShowAdapter mAdapter;
 	/**
-	 * 本次加载的Json数据
+	 * 存放加载的Json数据
 	 */
-	private static List<JSONObject> mList;
-	/**
-	 * 所有次加载的Json数据
-	 */
-	private List<JSONObject> mAllList;
+	private List<String[]> mList;
 	/**
 	 * 判断是否为最后一页
 	 */
@@ -59,6 +55,7 @@ public class ImageShowActivity extends Activity {
 	//首次进入时当前图片的位置
 	private int currentPosition;
 	
+	@SuppressWarnings("unchecked")
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		// TODO Auto-generated method stub
@@ -74,16 +71,15 @@ public class ImageShowActivity extends Activity {
 		totalImagesCount = intent.getIntExtra("totalImagesCount", URLUtil.RN);
 		currentPosition = intent.getIntExtra("currentPosition", 0);
 		
-		mAllList = new ArrayList<JSONObject>();
-		mAllList.addAll(mList); //首次数据add
+		mList = new ArrayList<String[]>();
+		mList.addAll((List<String[]>) intent.getSerializableExtra("jsonString"));
 		
 		System.out.println("ImageShowActivity position:" + currentPosition);
-		mAdapter = new ImageShowAdapter(this, flag);
+		mAdapter = new ImageShowAdapter(this, flag, mList);
 		imageViewPager = (ViewPager) findViewById(R.id.imageViewPager);
 		imageViewPager.setAdapter(mAdapter);
 		
-		mAdapter.addAll(mList);
-		mAdapter.notifyDataSetChanged();
+		//mAdapter.notifyDataSetChanged();
 		//加载数据后,再设置当前页
 		imageViewPager.setCurrentItem(currentPosition);
 		
@@ -94,7 +90,7 @@ public class ImageShowActivity extends Activity {
 				System.out.println("ImageShowActivity onPageSelected position------------------>>>>>>>>>>>:" + position);
 				//首次进入并不会执行此方法
 				// 为了体验效果更好一些，设置为提前加载，当滑动到倒数第二页时就开始加载下一次Json数据
-				if(position == mAllList.size() - 2 && position == totalImagesCount - 2){
+				if(position == mList.size() - 2 && position == totalImagesCount - 2){
 					System.out.println("到达倒数第2页，将加载更多");
 					//最后一页向左滑后，则获取下一次Json数据
 					mGetJsonByVolley = new GetJsonByVolley(ImageShowActivity.this, handler);
@@ -126,10 +122,10 @@ public class ImageShowActivity extends Activity {
 					isFirstOrLast = false;
 				}else if(state == 0 && isFirstOrLast){
 					//到达最后一页
-					if(imageViewPager.getCurrentItem() == mAllList.size() - 1){
+					if(imageViewPager.getCurrentItem() == mList.size() - 1){
 						System.out.println("ImageShowActivity onPageScrollStateChanged totalImagesCount------------------>>>>>>>>>>>:" + totalImagesCount);
 						//首次进入时直接到最后一页
-						if(currentPosition == mAllList.size() - 1 && imageViewPager.getCurrentItem() == totalImagesCount - 1){
+						if(currentPosition == mList.size() - 1 && imageViewPager.getCurrentItem() == totalImagesCount - 1){
 							System.out.println("到达最后一页，将加载更多");
 							mGetJsonByVolley = new GetJsonByVolley(ImageShowActivity.this, handler);
 							page++; //下一页rn
@@ -181,19 +177,12 @@ public class ImageShowActivity extends Activity {
 		public void handleMessage(Message msg) {
 			if(msg.what == 0){
 				System.out.println("收到来自handler的更新消息");
-				setmList(mGetJsonByVolley.getmList());
-				mAllList.addAll(mList);
+				mList.addAll(mGetJsonByVolley.getmList());
 				
-				mAdapter.addAll(mList);
 				mAdapter.notifyDataSetChanged();
 			}
 		};
 	};
-	
-	public static void setmList(List<JSONObject> mData) {
-		mList = mData;
-	}
-	
 	
 	//返回按钮
 	public void onBack(View view) {
@@ -207,23 +196,20 @@ public class ImageShowActivity extends Activity {
 		//通过tag获取当前页图片
 		ZoomableNetworkImageView gestureImageView = (ZoomableNetworkImageView) imageViewPager.findViewWithTag(imageViewPager.getCurrentItem());
 		gestureImageView.setDrawingCacheEnabled(true);
-		try {
-			String downloadUrl = "";
-			if(flag == 0){
-				downloadUrl = mList.get(imageViewPager.getCurrentItem()).getString("obj_url");
-			}else if(flag == 1){
-				downloadUrl = mList.get(imageViewPager.getCurrentItem()).getString("objURL");
-			}
-
-			if(FileUtil.writeSDcard(downloadUrl, gestureImageView.getDrawingCache())){
-				Toast.makeText(this, "download successful", Toast.LENGTH_SHORT).show();
-			}else{
-				Toast.makeText(this, "download failed", Toast.LENGTH_SHORT).show();
-			}
-			
-		} catch (JSONException e) {
-			e.printStackTrace();
+		
+		String downloadUrl = "";
+		if(flag == 0){
+			downloadUrl = mList.get(imageViewPager.getCurrentItem())[1];
+		}else if(flag == 1){
+			downloadUrl = mList.get(imageViewPager.getCurrentItem())[1];
 		}
+
+		if(FileUtil.writeSDcard(downloadUrl, gestureImageView.getDrawingCache())){
+			Toast.makeText(this, "download successful", Toast.LENGTH_SHORT).show();
+		}else{
+			Toast.makeText(this, "download failed", Toast.LENGTH_SHORT).show();
+		}
+			
 		gestureImageView.setDrawingCacheEnabled(false);
 	}
 	
@@ -244,17 +230,13 @@ public class ImageShowActivity extends Activity {
 	
 	public void onShare(View view){
 		String downloadUrl = "";
-		try {
-			if(flag == 0){
-				downloadUrl = mList.get(imageViewPager.getCurrentItem()).getString("obj_url");
-			}else if(flag == 1){
-				downloadUrl = mList.get(imageViewPager.getCurrentItem()).getString("objURL");
-			}
-			
-		} catch (JSONException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+
+		if(flag == 0){
+			downloadUrl = mList.get(imageViewPager.getCurrentItem())[1];
+		}else if(flag == 1){
+			downloadUrl = mList.get(imageViewPager.getCurrentItem())[1];
 		}
+			
 		Intent intent = new Intent(Intent.ACTION_SEND);
 		intent.setType("text/plain");
 		intent.putExtra(Intent.EXTRA_SUBJECT, "share");
@@ -279,7 +261,6 @@ public class ImageShowActivity extends Activity {
 	protected void onDestroy() {
 		//移除所有消息
 		handler.removeCallbacksAndMessages(null);
-		
 //		mList = null;
 //		mAllList = null;
 //		mAdapter = null;

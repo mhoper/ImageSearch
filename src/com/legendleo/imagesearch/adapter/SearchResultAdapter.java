@@ -25,7 +25,7 @@ import com.legendleo.imagesearch.volley.MySingleton;
 public class SearchResultAdapter extends BaseAdapter {
 
 	private Context mContext;
-	private List<JSONObject> list = new ArrayList<JSONObject>();
+	private List<String[]> list;
 	private ImageLoader imageLoader;
 	private final Random mRandom;
 	private int columnWidth;
@@ -40,21 +40,14 @@ public class SearchResultAdapter extends BaseAdapter {
 	
 	private static final SparseArray<Double> sPositionHeightRatios = new SparseArray<Double>();
 	
-	public SearchResultAdapter(Context context, int flg){
+	public SearchResultAdapter(Context context, int flg, List<String[]> mData){
 		mContext = context;
 		flag = flg;
+		list = mData; //直接引用mList的值
 		imageLoader = MySingleton.getInstance(context).getImageLoader();
 		mRandom = new Random();
 	}
 	
-	public void setData(List<JSONObject> mData){
-		list.clear();
-		list.addAll(mData);
-	}
-	
-	public void addAll(List<JSONObject> mData){
-		list.addAll(mData);
-	}
 	@Override
 	public int getCount() {
 		return list.size();
@@ -82,27 +75,22 @@ public class SearchResultAdapter extends BaseAdapter {
 			holder = (ViewHolder) convertView.getTag();
 		}
 		
-		try {
-			double positionHeight = getPositionRatio(position);
-			holder.mImageView.setHeightRatio(positionHeight);
-			holder.mImageView.setmCloumnWidth(columnWidth);
-			
-			holder.mImageView.setDefaultImageResId(R.drawable.empty_photo);
-			holder.mImageView.setErrorImageResId(R.drawable.empty_photo);
-			
-			String url = "";
-			if(flag == 0){
-				url = list.get(position).getString("thumbnail_url");
-			}else if(flag == 1){
-				url = list.get(position).getString("thumbURL");
-			}
-			
-			holder.mImageView.setImageUrl(url, imageLoader);
-
-		} catch (JSONException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		double positionHeight = getPositionRatio(position);
+		holder.mImageView.setHeightRatio(positionHeight);
+		holder.mImageView.setmCloumnWidth(columnWidth);
+		
+		holder.mImageView.setDefaultImageResId(R.drawable.empty_photo);
+		holder.mImageView.setErrorImageResId(R.drawable.empty_photo);
+		
+		String url = "";
+		if(flag == 0){
+			url = list.get(position)[0];
+		}else if(flag == 1){
+			url = list.get(position)[1];
 		}
+		
+		holder.mImageView.setImageUrl(url, imageLoader);
+
 		return convertView;
 	}
 	

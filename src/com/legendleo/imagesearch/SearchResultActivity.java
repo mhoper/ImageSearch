@@ -1,6 +1,8 @@
 package com.legendleo.imagesearch;
 
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import org.json.JSONObject;
@@ -43,14 +45,9 @@ public class SearchResultActivity extends Activity implements OnScrollListener {
 	
 	private GetJsonByVolley mGetJsonByVolley;
 	/**
-	 * 本次加载的Json数据
+	 * 存放加载的Json数据
 	 */
-	private List<JSONObject> mList;
-	
-	/**
-	 * 所有次加载的数据，用于ItemClick
-	 */
-	private List<JSONObject> mAllList;
+	private List<String[]> mList;
 	/**
 	 * 区分分类和搜索
 	 */
@@ -110,18 +107,17 @@ public class SearchResultActivity extends Activity implements OnScrollListener {
 		loadMoreText = (TextView) loadMoreView.findViewById(R.id.loadMoreText);
 		resultGridView.addFooterView(loadMoreView);
 		
-		mAdapter = new SearchResultAdapter(this, flag);
+		mList = new ArrayList<String[]>();
+		mAdapter = new SearchResultAdapter(this, flag, mList);
 		resultGridView.setAdapter(mAdapter);
 		resultGridView.setOnScrollListener(this);
 
-		mAllList = new ArrayList<JSONObject>();
 		
 		resultGridView.setOnItemClickListener(new OnItemClickListener() {
 
 			@Override
 			public void onItemClick(AdapterView<?> parent, View view,
 					int position, long id) {
-				ImageShowActivity.setmList(mAllList);
 				
 				Intent intent = new Intent(SearchResultActivity.this, ImageShowActivity.class);
 				intent.putExtra("category", category);
@@ -130,6 +126,7 @@ public class SearchResultActivity extends Activity implements OnScrollListener {
 				intent.putExtra("totalImagesCount", totalImagesCount);
 				intent.putExtra("flag", flag);
 				intent.putExtra("currentPosition", position); //当前点击图片的位置
+				intent.putExtra("jsonString", (Serializable)mList);
 				startActivity(intent);
 			}
 		});
@@ -153,19 +150,11 @@ public class SearchResultActivity extends Activity implements OnScrollListener {
 		@Override
 		public void handleMessage(Message msg) {
 			if(msg.what == 0){
-				mList = mGetJsonByVolley.getmList();
-				System.out.println("handleMessage mList.size:" + mList.size());
-				
 				if(page == 0){
-					mAdapter.setData(mList);
-					System.out.println("handleMessage mAdapter.setData");
-					mAllList.clear();
-					mAllList.addAll(mList);
-				}else{
-					//滑动取更多
-					mAdapter.addAll(mList);
-					mAllList.addAll(mList);
+					mList.clear(); //重新搜索时清空
 				}
+				mList.addAll(mGetJsonByVolley.getmList());
+				System.out.println("handleMessage mList.size:" + mList.size());
 				
 				//重新搜索后，GridView滚动回顶部位置
 				if(resultGridViewPBar.getVisibility() == View.VISIBLE){
